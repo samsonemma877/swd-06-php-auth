@@ -5,6 +5,10 @@ error_reporting(E_ALL);
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 
+header('X-Frame-Options: DENY');
+header('X-Content-Type-Options: nosniff');
+header('Referrer-Policy: strict-origin-when-cross-origin');
+
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/src/db.php';
 require_once __DIR__ . '/src/helpers.php';

@@ -131,6 +131,7 @@ function auth_navbar(array $user): void
 {
     $baseUrl = auth_base_url();
     echo '<nav class="site-nav" aria-label="Main navigation"><a href="' . e($baseUrl) . 'dashboard.php">Dashboard</a>';
+    echo '<a href="' . e($baseUrl) . 'profile.php">Profile</a>';
     if (($user['role'] ?? null) === 'admin') {
         echo '<a href="' . e($baseUrl) . 'admin/users.php">Admin</a>';
     }

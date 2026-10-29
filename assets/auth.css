@@ -28,6 +28,17 @@ body {
     align-items: start;
 }
 
+.profile-sections {
+    display: grid;
+    width: min(100%, 920px);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+    gap: 24px;
+}
+
+.profile-sections .auth-card {
+    width: 100%;
+}
+
 .auth-card {
     width: min(100%, 440px);
     padding: 40px;
@@ -76,6 +87,12 @@ body {
 h1 {
     margin: 0;
     font-size: clamp(1.7rem, 5vw, 2rem);
+    letter-spacing: -0.035em;
+}
+
+h2 {
+    margin: 0;
+    font-size: 1.5rem;
     letter-spacing: -0.035em;
 }
 
