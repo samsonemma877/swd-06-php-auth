@@ -85,6 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
                     $_SESSION['user_id'] = (int) $pdo->lastInsertId();
                     $_SESSION['user_role'] = 'user';
+                    $_SESSION['auth_version'] = 0;
                     $_SESSION['user_name'] = $name;
                     $_SESSION['user_email'] = $email;
                     $_SESSION['last_activity_at'] = time();

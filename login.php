@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $errors[] = 'Too many attempts, try again in ' . $throttleStatus['minutes'] . ' minutes';
         } else {
             $statement = db()->prepare(
-                'SELECT id, name, email, password_hash, role FROM users WHERE email = :email LIMIT 1'
+                'SELECT id, name, email, password_hash, role, auth_version FROM users WHERE email = :email LIMIT 1'
             );
             $statement->execute(['email' => $email]);
             $user = $statement->fetch();
@@ -74,6 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 clear_login_attempts($email, $ipAddress);
                 $_SESSION['user_id'] = (int) $user['id'];
                 $_SESSION['user_role'] = $user['role'];
+                $_SESSION['auth_version'] = auth_version_value($user['auth_version']);
                 $_SESSION['user_name'] = $user['name'];
                 $_SESSION['user_email'] = $user['email'];
                 $_SESSION['last_activity_at'] = time();

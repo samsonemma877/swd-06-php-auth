@@ -5,7 +5,7 @@ A PHP 8 authentication example for XAMPP and the MySQL `swd_auth` database.
 ## Setup
 
 1. Create the `swd_auth` database and configure the connection in `config/database.php`, or set `SWD_AUTH_DSN`, `SWD_AUTH_DB_USER`, and `SWD_AUTH_DB_PASSWORD` in the PHP process environment.
-2. Ensure `users` has the columns used by the application: `id`, `name`, `email`, `password_hash`, `role`, `created_at`, and `last_login_at`. Make `email` unique.
+2. Ensure `users` has the columns used by the application: `id`, `name`, `email`, `password_hash`, `role`, `created_at`, `last_login_at`, and `auth_version` (an integer with `NOT NULL DEFAULT 0`). Make `email` unique.
 3. Ensure `login_attempts` has `id`, `email`, `ip_address`, and `attempted_at` columns. Index `(email, attempted_at)` and `(ip_address, attempted_at)` for efficient throttling.
 4. Visit `register.php` to create an account. New registrations receive the `user` role.
 5. Promote the first administrator from a terminal:
@@ -22,7 +22,7 @@ The promotion script is CLI-only. Configure its database connection using the sa
 - Registration and password changes require at least 10 characters, a letter, and a number. Password changes also verify the current password.
 - PDO uses prepared statements and exception-mode error handling for database operations.
 - Authentication forms use CSRF tokens. Logout accepts POST only and destroys the session and cookie.
-- Sessions use a dedicated name, strict mode, cookie-only transport, HttpOnly, SameSite=Lax, and Secure cookies when HTTPS is active. Session IDs are rotated after login, registration, and password changes. Inactivity expires authenticated sessions after 30 minutes.
+- Sessions use a dedicated name, strict mode, cookie-only transport, HttpOnly, SameSite=Lax, and Secure cookies when HTTPS is active. Session IDs are rotated after login, registration, and password changes. Inactivity expires authenticated sessions after 30 minutes. Password changes increment `auth_version`; authenticated requests compare the session version so other active sessions are revoked.
 - Login failures are tracked by email and client IP. Five failures in the last 15 minutes block another attempt until the oldest failure ages out. A successful login clears matching attempts.
 - Protected pages check authorization on the server. Admin role changes require CSRF verification; an administrator cannot demote their own account.
 - Intended post-login destinations are constrained to validated, relative application paths to prevent external redirects.

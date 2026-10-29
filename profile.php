@@ -107,15 +107,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Unable to securely hash the new password.');
             }
 
-            $update = db()->prepare('UPDATE users SET password_hash = :password_hash WHERE id = :id');
+            $update = db()->prepare(
+                'UPDATE users SET password_hash = :password_hash, auth_version = auth_version + 1 WHERE id = :id'
+            );
             $update->execute([
                 'password_hash' => $newPasswordHash,
                 'id' => $user['id'],
             ]);
 
+            if ($update->rowCount() !== 1) {
+                throw new RuntimeException('Unable to update the password and revoke existing sessions.');
+            }
+
+            $versionStatement = db()->prepare('SELECT auth_version FROM users WHERE id = :id LIMIT 1');
+            $versionStatement->execute(['id' => $user['id']]);
+            $updatedAuthVersion = $versionStatement->fetchColumn();
+            if ($updatedAuthVersion === false) {
+                throw new RuntimeException('Unable to load the updated authentication version.');
+            }
+
             if (!session_regenerate_id(true)) {
                 throw new RuntimeException('Unable to rotate the session identifier after changing the password.');
             }
+            $_SESSION['auth_version'] = auth_version_value($updatedAuthVersion);
             unset($_SESSION['_csrf_token']);
             $_SESSION['last_activity_at'] = time();
             flash('success', 'Your password has been changed.');

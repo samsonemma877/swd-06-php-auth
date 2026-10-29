@@ -9,7 +9,7 @@ function current_user(): ?array
     }
 
     $statement = db()->prepare(
-        'SELECT id, name, email, role, last_login_at FROM users WHERE id = :id LIMIT 1'
+        'SELECT id, name, email, role, last_login_at, auth_version FROM users WHERE id = :id LIMIT 1'
     );
     $statement->execute(['id' => $userId]);
     $user = $statement->fetch();
@@ -20,7 +20,8 @@ function current_user(): ?array
             $_SESSION['user_role'],
             $_SESSION['user_name'],
             $_SESSION['user_email'],
-            $_SESSION['last_activity_at']
+            $_SESSION['last_activity_at'],
+            $_SESSION['auth_version']
         );
         return null;
     }
@@ -29,8 +30,25 @@ function current_user(): ?array
         throw new UnexpectedValueException('The user account has no valid role.');
     }
 
+    $authVersion = auth_version_value($user['auth_version']);
+    if (($_SESSION['auth_version'] ?? null) !== $authVersion) {
+        $_SESSION = [];
+        flash('info', 'Your session is no longer valid. Please sign in again.');
+        return null;
+    }
+
     $_SESSION['user_role'] = $user['role'];
     return $user;
+}
+
+function auth_version_value(mixed $value): int
+{
+    $version = filter_var($value, FILTER_VALIDATE_INT, ['options' => ['min_range' => 0]]);
+    if ($version === false) {
+        throw new UnexpectedValueException('The user account has an invalid authentication version.');
+    }
+
+    return $version;
 }
 
 function require_login(): array
