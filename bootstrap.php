@@ -9,6 +9,7 @@ require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/src/db.php';
 require_once __DIR__ . '/src/helpers.php';
 require_once __DIR__ . '/src/csrf.php';
+require_once __DIR__ . '/src/auth.php';
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
     if (headers_sent($file, $line)) {
@@ -30,5 +31,22 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 
     if (!session_start()) {
         throw new RuntimeException('Unable to start the authentication session.');
+    }
+
+    if (isset($_SESSION['user_id'])) {
+        $now = time();
+        $lastActivity = $_SESSION['last_activity_at'] ?? null;
+
+        if (!is_int($lastActivity) || $lastActivity > $now || $now - $lastActivity >= 1800) {
+            $_SESSION = [];
+            if (!session_regenerate_id(true)) {
+                throw new RuntimeException('Unable to rotate the session identifier after inactivity timeout.');
+            }
+            flash('info', 'You were signed out after 30 minutes of inactivity. Please sign in again.');
+        }
+
+        if (isset($_SESSION['user_id'])) {
+            $_SESSION['last_activity_at'] = $now;
+        }
     }
 }

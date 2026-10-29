@@ -53,8 +53,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $errors[] = 'An account with that email address already exists.';
             } else {
                 $passwordHash = password_hash($password, PASSWORD_DEFAULT);
+                if (!is_string($passwordHash)) {
+                    throw new RuntimeException('Unable to securely hash the password.');
+                }
                 $insert = $pdo->prepare(
-                    'INSERT INTO users (name, email, password_hash) VALUES (:name, :email, :password_hash)'
+                    "INSERT INTO users (name, email, password_hash, role, last_login_at) VALUES (:name, :email, :password_hash, 'user', CURRENT_TIMESTAMP)"
                 );
 
                 try {
@@ -81,8 +84,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         throw new RuntimeException('Unable to rotate the session identifier after registration.');
                     }
                     $_SESSION['user_id'] = (int) $pdo->lastInsertId();
+                    $_SESSION['user_role'] = 'user';
                     $_SESSION['user_name'] = $name;
                     $_SESSION['user_email'] = $email;
+                    $_SESSION['last_activity_at'] = time();
                     unset($_SESSION['_old'], $_SESSION['_csrf_token']);
 
                     flash('success', 'Your account has been created.');

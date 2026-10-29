@@ -147,6 +147,52 @@ h1 {
     color: #20623a;
 }
 
+.auth-footer {
+    margin: 22px 0 0;
+    text-align: center;
+}
+
+.auth-footer a {
+    color: #4357cf;
+    font-weight: 650;
+}
+
+.account-details {
+    display: grid;
+    gap: 0;
+    margin: 0 0 24px;
+}
+
+.account-details > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 13px 0;
+    border-bottom: 1px solid #edf0f5;
+}
+
+.account-details dt {
+    color: #68748a;
+    font-size: 0.9rem;
+}
+
+.account-details dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+    font-weight: 600;
+    text-align: right;
+}
+
+.button-secondary {
+    border: 1px solid #ccd3df;
+    background: #fff;
+    color: #25304a;
+}
+
+.button-secondary:hover {
+    background: #f3f5f9;
+}
+
 @media (max-width: 480px) {
     .auth-card {
         padding: 28px 22px;
