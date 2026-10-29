@@ -61,11 +61,149 @@ function require_role(string $role): array
 {
     $user = require_login();
     if (($user['role'] ?? null) !== $role) {
-        http_response_code(403);
-        exit('You do not have permission to access this page.');
+        render_forbidden_page();
     }
 
     return $user;
+}
+
+function login_throttle_status(string $email, string $ipAddress): array
+{
+    $cutoff = date('Y-m-d H:i:s', time() - 900);
+    $pdo = db();
+    $status = ['blocked' => false, 'minutes' => 0];
+
+    foreach ([
+        ['column' => 'email', 'value' => $email],
+        ['column' => 'ip_address', 'value' => $ipAddress],
+    ] as $identifier) {
+        $statement = $pdo->prepare(
+            "SELECT COUNT(*) AS failures, MIN(attempted_at) AS oldest_attempt "
+            . "FROM login_attempts WHERE {$identifier['column']} = :value AND attempted_at >= :cutoff"
+        );
+        $statement->execute([
+            'value' => $identifier['value'],
+            'cutoff' => $cutoff,
+        ]);
+        $attempts = $statement->fetch();
+
+        if ($attempts !== false && (int) $attempts['failures'] >= 5) {
+            $oldestAttempt = strtotime((string) $attempts['oldest_attempt']);
+            if ($oldestAttempt === false) {
+                throw new UnexpectedValueException('A login attempt has an invalid timestamp.');
+            }
+
+            $minutes = max(1, (int) ceil(($oldestAttempt + 900 - time()) / 60));
+            $status['blocked'] = true;
+            $status['minutes'] = max($status['minutes'], $minutes);
+        }
+    }
+
+    return $status;
+}
+
+function record_login_failure(string $email, string $ipAddress): array
+{
+    $statement = db()->prepare(
+        'INSERT INTO login_attempts (email, ip_address, attempted_at) VALUES (:email, :ip_address, :attempted_at)'
+    );
+    $statement->execute([
+        'email' => $email,
+        'ip_address' => $ipAddress,
+        'attempted_at' => date('Y-m-d H:i:s'),
+    ]);
+
+    return login_throttle_status($email, $ipAddress);
+}
+
+function clear_login_attempts(string $email, string $ipAddress): void
+{
+    $statement = db()->prepare(
+        'DELETE FROM login_attempts WHERE email = :email OR ip_address = :ip_address'
+    );
+    $statement->execute([
+        'email' => $email,
+        'ip_address' => $ipAddress,
+    ]);
+}
+
+function auth_navbar(array $user): void
+{
+    $baseUrl = auth_base_url();
+    echo '<nav class="site-nav" aria-label="Main navigation"><a href="' . e($baseUrl) . 'dashboard.php">Dashboard</a>';
+    if (($user['role'] ?? null) === 'admin') {
+        echo '<a href="' . e($baseUrl) . 'admin/users.php">Admin</a>';
+    }
+    echo '</nav>';
+}
+
+function auth_base_url(): string
+{
+    $appRoot = realpath(dirname(__DIR__));
+    $documentRoot = isset($_SERVER['DOCUMENT_ROOT']) && is_string($_SERVER['DOCUMENT_ROOT'])
+        ? realpath($_SERVER['DOCUMENT_ROOT'])
+        : false;
+
+    if ($appRoot !== false && $documentRoot !== false) {
+        $normalizedAppRoot = rtrim(str_replace('\\', '/', $appRoot), '/');
+        $normalizedDocumentRoot = rtrim(str_replace('\\', '/', $documentRoot), '/');
+        $documentRootLength = strlen($normalizedDocumentRoot);
+        $appIsInDocumentRoot = strncasecmp($normalizedAppRoot, $normalizedDocumentRoot, $documentRootLength) === 0
+            && (
+                strlen($normalizedAppRoot) === $documentRootLength
+                || substr($normalizedAppRoot, $documentRootLength, 1) === '/'
+            );
+
+        if ($appIsInDocumentRoot) {
+            $relativeAppRoot = trim(substr($normalizedAppRoot, $documentRootLength), '/');
+            return $relativeAppRoot === '' ? '/' : '/' . $relativeAppRoot . '/';
+        }
+    }
+
+    $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
+    if (is_string($scriptName)) {
+        $scriptPath = str_replace('\\', '/', $scriptName);
+        if (str_ends_with($scriptPath, '/admin/users.php')) {
+            return substr($scriptPath, 0, -strlen('admin/users.php'));
+        }
+        return rtrim(str_replace('\\', '/', dirname($scriptPath)), '/') . '/';
+    }
+
+    return '/';
+}
+
+function render_forbidden_page(): void
+{
+    http_response_code(403);
+    $user = current_user();
+    $baseUrl = auth_base_url();
+    ?>
+    <!doctype html>
+    <html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Access denied</title>
+        <link rel="stylesheet" href="<?= e($baseUrl) ?>assets/auth.css">
+    </head>
+    <body>
+    <?php if ($user !== null): ?>
+        <?php auth_navbar($user); ?>
+    <?php endif; ?>
+    <main class="auth-page">
+        <section class="auth-card" aria-labelledby="page-title">
+            <div class="auth-heading">
+                <p class="eyebrow">Access denied</p>
+                <h1 id="page-title">You can’t access this page</h1>
+                <p class="muted">Your account does not have permission to view this area.</p>
+            </div>
+            <a class="button button-link" href="<?= e($baseUrl) ?>dashboard.php">Return to dashboard</a>
+        </section>
+    </main>
+    </body>
+    </html>
+    <?php
+    exit;
 }
 
 function intended_url_from_request(): ?string
